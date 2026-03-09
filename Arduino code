@@ -1,0 +1,86 @@
+#define BLYNK_TEMPLATE_ID "TMPL3l6YTVapk"
+#define BLYNK_TEMPLATE_NAME "Lashya Das"
+#define BLYNK_AUTH_TOKEN "f_DxUvwjGbhDwbs568wbbfU8Fy8Ru7xA"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+
+char ssid[] = "OPPO Reno11 5G";
+char pass[] = "e2jn36em";
+
+#define trigPin 12
+#define echoPin 27
+#define ledPin 33
+#define buzzerPin 32
+#define relayPin 26
+
+BlynkTimer timer;
+
+void sendDistance() {
+  // Trigger pulse
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  // Echo pulse with timeout
+  long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout
+
+  if (duration == 0) {
+    Serial.println("No echo received");
+    Blynk.virtualWrite(V4, 0); // Send 0 to app if no echo
+    // Reset outputs
+    digitalWrite(ledPin, LOW);
+    digitalWrite(buzzerPin, LOW);
+    digitalWrite(relayPin, HIGH);
+    Blynk.virtualWrite(V3, 0);
+    return;
+  }
+
+  // Calculate distance
+  float distance = duration * 0.034 / 2;
+
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  Blynk.virtualWrite(V4, distance);
+
+  // Intrusion detection logic
+  if (distance > 0 && distance < 20) {
+    Serial.println("Intrusion Detected!");
+    digitalWrite(ledPin, HIGH);
+    digitalWrite(buzzerPin, HIGH);
+    digitalWrite(relayPin, LOW);   // Relay ON (active LOW)
+    Blynk.virtualWrite(V3, 1);
+  } else {
+    digitalWrite(ledPin, LOW);
+    digitalWrite(buzzerPin, LOW);
+    digitalWrite(relayPin, HIGH);  // Relay OFF
+    Blynk.virtualWrite(V3, 0);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(relayPin, OUTPUT);
+
+  digitalWrite(relayPin, HIGH); // start OFF
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  timer.setInterval(1000L, sendDistance); // Run every second
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
+
+
